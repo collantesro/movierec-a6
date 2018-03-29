@@ -1,0 +1,45 @@
+* {
+    box-sizing: border-box;
+    font-family: "Open Sans", sans;
+}
+
+body{
+    background-color: green;
+    color: white;
+}
+
+.center{
+    margin: 0 auto;
+    background-color: white;
+    color: black;
+    border-radius: 10px;
+    box-shadow: 0 10px 20px black;
+    max-width: 600px;
+    padding: 10px;
+    text-align: center;
+    margin-top: 2em;
+}
+
+#searchBox{
+    width: 75%;
+    text-align: center;
+}
+
+#searchSuggestions{
+    list-style-type: none;
+    width: 75%;
+    margin: 0 auto;
+    display: none;
+}
+
+#searchSuggestions li:hover{
+    background-color: #ccc;
+}
+
+.movie{
+    width: 50px;
+    height: 100px;
+    margin: 0 2px;
+    border: 1px solid black;
+    display: inline-block;
+}
