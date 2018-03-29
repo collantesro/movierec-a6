@@ -1,9 +1,9 @@
 "use strict";
 
-const generateMovie = (posterURL, rating, movieID, removeLink) =>{
+const generateMovie = (posterURL, rating, movieId, removeLink) =>{
     let posterDiv = document.createElement("div");
     posterDiv.classList.add("movie");
-    posterDiv.dataset.movieID = movieID;
+    posterDiv.dataset.movieId = movieId;
 
     // Image
     let posterIMG = new Image();
@@ -15,8 +15,8 @@ const generateMovie = (posterURL, rating, movieID, removeLink) =>{
 
     if(removeLink === true){
         let link = document.createElement("a");
-        link.addEventListener("click", e=>{removeMovie(movieID)})
-        link.appendChild(document.createTextNode("Remove Movie"));
+        link.addEventListener("click", e=>{removeMovie(movieId)})
+        link.appendChild(document.createTextNode("Remove"));
         posterDiv.appendChild(document.createElement("br"));
         posterDiv.appendChild(link);
     }
@@ -25,11 +25,11 @@ const generateMovie = (posterURL, rating, movieID, removeLink) =>{
 
 }
 
-const removeMovie = movieID => {
+const removeMovie = movieId => {
     let selections = document.querySelector("#selections");
     let children = selections.children;
     for(let i = 0; i < children.length; i++){
-        if(children[i].dataset.movieID == movieID){
+        if(children[i].dataset.movieId == movieId){
             selections.removeChild(children[i]);
         }
     }
@@ -50,11 +50,11 @@ let populateSuggestions = (e)=>{
 }
 
 document.querySelector("#generateMovie").addEventListener("click", e=>{
-    let movieID = Math.random().toString(36).substr(2,5);
+    let movieId = Math.random().toString(36).substr(2,5);
     let rating = Math.random() * 4 + 1;
     rating = rating.toFixed(2);
     rating = rating + "/5";
-    let movie = generateMovie("", rating, movieID, true);
+    let movie = generateMovie("", rating, movieId, true);
     document.querySelector("#selections").appendChild(movie);
 })
 
