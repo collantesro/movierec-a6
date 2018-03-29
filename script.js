@@ -9,7 +9,7 @@ const generateMovie = (posterURL, rating, movieID, removeLink) =>{
     let posterIMG = new Image();
     posterIMG.src = posterURL;
     posterDiv.appendChild(posterIMG);
-    
+
     // Rating
     posterDiv.appendChild(document.createTextNode(rating));
 
