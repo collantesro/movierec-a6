@@ -43,9 +43,16 @@ body{
 }
 
 .movie img{
-    width: 50px;
-    height: 100px;
+    width: 101px;
+    height: 150px;
     border: 1px solid black;
     display: block;
     margin: 0 auto;
+}
+
+
+#recommendations > .manyMovies{
+    display: flex;
+    overflow: scroll;
+    font-size: small;
 }
