@@ -25,11 +25,32 @@ body{
     text-align: center;
 }
 
+#searchBoxContainer{
+    margin-bottom: 1em;
+}
+
+#clearButton{
+    margin: 0 auto;
+    display: inline;
+    position: absolute;
+}
+
 #searchSuggestions{
     list-style-type: none;
-    width: 75%;
     margin: 0 auto;
+    width: calc(600px * 0.75);
+    padding: 1em;
     display: none;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.55);
+    position: absolute;
+    z-index: 2;
+    background-color: white;
+    max-height: 75vh;
+    min-height: 300px;
+    overflow: scroll;
+    left: 50%;
+    transform: translate(-50%,-1em);
+    border-radius: 5px;
 }
 
 #searchSuggestions li:hover{
@@ -38,8 +59,10 @@ body{
 
 .movie{
     margin: 0 2px;
+    width: 110px;
     display: inline-block;
     text-align: center;
+    vertical-align: top;
 }
 
 .movie img{
@@ -55,4 +78,15 @@ body{
     display: flex;
     overflow: scroll;
     font-size: small;
+}
+#searchSuggestions li {
+    display: inline-block;
+}
+
+#searchSuggestions li div{
+    width: 110px;
+}
+#searchSuggestions {
+    flex-flow: row wrap;
+    justify-content: space-between;
 }

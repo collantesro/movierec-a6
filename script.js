@@ -1,5 +1,7 @@
 "use strict";
 
+var allMovies = new Set();
+
 const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClickURL) =>{
     let posterDiv = document.createElement("div");
     posterDiv.classList.add("movie");
@@ -57,7 +59,7 @@ const replaceRecommendations = ()=>{
             div.removeChild(div.lastChild);
         }
         window.recs.forEach(r => {
-            let movie = generateMovie(r.title, r.poster, "3/3", r.id, false, r.link);
+            let movie = generateMovie(r.title, r.poster, r.rating, r.id, false, r.link);
             div.appendChild(movie);
         });
     }
@@ -74,35 +76,112 @@ const  populateSuggestions = (e)=>{
         
         // Get search suggestions here
         if(e.target.value !== ""){
-            document.querySelector("#searchSuggestions").style.display = "block";
+            let url = "/cgi-bin/engine.cgi?search=" + encodeURI(e.target.value);
+
+            if(window.outstanding){
+                if(typeof AbortController != "undefined"){
+                    window.outstanding.controller.abort();
+                }
+                window.outstanding = null;
+            }
+
+            let newController = Math.random();
+            if(typeof AbortController != "undefined"){
+                newController = new AbortController();
+            }
+            
+            window.outstanding = {controller: newController};
+            fetch(url, {
+                method: "GET",
+                signal: newController.signal
+            }).then(res=>{
+                if(typeof AbortController == "undefined"){
+                    if(window.outstanding.controller != newController){
+                        console.log("This request doesn't match the outstanding request.");
+                        Promise.reject();
+                    }
+                }
+                return res.ok ? res.json() : Promise.reject();
+            })
+            .then(res=>{
+                let ul = document.querySelector("#searchSuggestions");
+                while(ul.lastChild){
+                    ul.removeChild(ul.lastChild);
+                }
+
+                if(res.length === 0){
+                    document.querySelector("#searchSuggestions").style.display = "none";
+                    return;
+                } else {
+                    res.forEach(r=>allMovies.add(r));
+                }
+                res.forEach(r=>{
+                    let movie = generateMovie(r.title, r.poster, r.rating, r.id, false, false);
+                    let li = document.createElement("li");
+                    li.appendChild(movie);
+                    li.addEventListener("click", e=>{
+                        let childMovie = li.querySelector(".movie");
+                        let movieId = childMovie.dataset.movieId;
+                        let fullMovie = getMovie(movieId);
+                        addToSelections(generateMovie(fullMovie.title, fullMovie.poster,
+                            fullMovie.rating ? fullMovie.rating : "DUNNO", fullMovie.id, true, false));
+                        clearSearchBox();
+                    });
+                    ul.appendChild(li);         
+                });
+                document.querySelector("#searchSuggestions").style.display = "flex";
+            })
+            .catch(res=>console.error("suggestion error", res));
         } else {
             document.querySelector("#searchSuggestions").style.display = "none";
             return;
         }
 
-        console.log("would search:", e.target.value);
+        console.log("searched:", e.target.value);
     }, 500);
 }
 
-const  getInitialRecommendations = ()=>{
+const getInitialRecommendations = ()=>{
     fetch("/cgi-bin/engine.cgi")
     .then(res=>res.ok ? res.json() : Promise.reject())
     .then(res=>{
         window.recs = res;
+        if(res.length >= 1){
+            res.forEach(r=>allMovies.add(r));
+        }
         replaceRecommendations();
     })
     .catch(res=>console.log("error: ",res))
 }
 
-document.querySelector("#generateMovie").addEventListener("click", e=>{
-    let movieId = Math.random().toString(36).substr(2,5);
-    let rating = Math.random() * 4 + 1;
-    rating = rating.toFixed(2);
-    rating = rating + "/5";
-    let movie = generateMovie("namehere", "", rating, movieId, true, false);
-    document.querySelector("#selections").appendChild(movie);
-})
+const clearSearchBox = ()=>{
+    let box = document.querySelector("#searchBox");
+    box.value = "";
+    let ul = document.querySelector("#searchSuggestions");
+    while(ul.lastChild){
+        ul.removeChild(ul.lastChild);
+    }
+    document.querySelector("#searchSuggestions").style.display = "none";
+    box.focus();
+    return false;
+}
+
+const getMovie = movieId =>{
+    let movie = {};
+    allMovies.forEach(m=>{
+        if(m.id == movieId){
+            movie = m;
+        }
+    });
+    return movie;
+}
+
+const addToSelections = movieDiv=>{
+    let container = document.querySelector("#selections");
+    container.appendChild(movieDiv);
+}
 
 document.querySelector("#searchBox").addEventListener("input", populateSuggestions);
 
 getInitialRecommendations();
+clearSearchBox();

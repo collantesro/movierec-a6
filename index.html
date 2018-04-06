@@ -10,7 +10,10 @@
     <div class="center" id="searchSelections">
         <h1>Roly&rsquo;s Movie Recommendations</h1>
         <div id="search">
-            <input type="text" id="searchBox" placeholder="Search for movies here"/>
+            <div id="searchBoxContainer">
+                <input type="search" id="searchBox" placeholder="Search for movies here"/>
+                <button id="clearButton" type="button" onclick="clearSearchBox()">x</button>
+            </div>
             <ul id="searchSuggestions">
                 <li>Nothing</li>
             </ul>
@@ -23,9 +26,6 @@
         <div class="manyMovies"></div>
     </div>
 
-    <div class="center">
-        <button type="button" id="generateMovie">Add Movie</button>
-    </div>
     <script src="script.js"></script>
 </body>
 </html>
