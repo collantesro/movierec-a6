@@ -1,6 +1,14 @@
 "use strict";
 
 var allMovies = new Set();
+var userSelections = new Set();
+
+window.dtimer = {};
+
+const RFQuery = movieIdList => encodeURIComponent(JSON.stringify(movieIdList))
+const addToLocalCache = movies=>{
+    movies.forEach(m=>allMovies.add(m));
+}
 
 const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClickURL) =>{
     let posterDiv = document.createElement("div");
@@ -40,6 +48,9 @@ const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClic
 }
 
 const removeMovie = movieId => {
+    console.log("removeMove(" + movieId + ")");
+    userSelections.delete(movieId);
+    getRecommendations();
     let selections = document.querySelector("#selections");
     let children = selections.children;
     for(let i = 0; i < children.length; i++){
@@ -49,34 +60,44 @@ const removeMovie = movieId => {
     }
 }
 
-const replaceRecommendations = ()=>{
-    if(window.recs){
-        let header = document.querySelector("#recommendations > h3");
+const replaceRecommendations = recs=>{
+    let header = document.querySelector("#recommendations > h3");
+    let div = document.querySelector("#recommendations > .manyMovies");
+    // Remove everything in it.
+    while(div.lastChild){
+        div.removeChild(div.lastChild);
+    }
+    if(recs.length > 0){
         header.textContent = "Your recommendations:";
-        let div = document.querySelector("#recommendations > .manyMovies");
-        // Remove everything in it.
-        while(div.lastChild){
-            div.removeChild(div.lastChild);
-        }
-        window.recs.forEach(r => {
+        recs.forEach(r => {
             let movie = generateMovie(r.title, r.poster, r.rating, r.id, false, r.link);
             div.appendChild(movie);
         });
+    } else {
+        header.textContent = "No Recommendations";
     }
 }
 
 // Debouncing: it only runs 500ms after the last time this was called.
 // Repeated calls are ignored.
+//TODO: Separate into different functions
 const  populateSuggestions = (e)=>{
-    if(window.dtimer){
-        clearInterval(window.dtimer);
-        window.dtimer = null;
+    if(window.dtimer.populateSuggestions){
+        clearInterval(window.dtimer.populateSuggestions);
+        window.dtimer.populateSuggestions = null;
     }
-    window.dtimer = setTimeout(()=>{
-        
+    let searchStr = e.target.value.trim();
+
+    if(searchStr == ""){
+        document.querySelector("#searchSuggestions").style.display = "none";
+        return;
+    }
+
+    window.dtimer.populateSuggestions = setTimeout(()=>{
+        window.dtimer.populateSuggestions = null;
         // Get search suggestions here
-        if(e.target.value !== ""){
-            let url = "/cgi-bin/engine.cgi?search=" + encodeURI(e.target.value);
+        if(searchStr !== ""){
+            let url = "/cgi-bin/engine.cgi?search=" + encodeURIComponent(searchStr);
 
             if(window.outstanding){
                 if(typeof AbortController != "undefined"){
@@ -121,10 +142,8 @@ const  populateSuggestions = (e)=>{
                     li.appendChild(movie);
                     li.addEventListener("click", e=>{
                         let childMovie = li.querySelector(".movie");
-                        let movieId = childMovie.dataset.movieId;
-                        let fullMovie = getMovie(movieId);
-                        addToSelections(generateMovie(fullMovie.title, fullMovie.poster,
-                            fullMovie.rating ? fullMovie.rating : "DUNNO", fullMovie.id, true, false));
+                        let movieId = parseInt(childMovie.dataset.movieId);
+                        addToSelections(movieId);
                         clearSearchBox();
                     });
                     ul.appendChild(li);         
@@ -137,21 +156,53 @@ const  populateSuggestions = (e)=>{
             return;
         }
 
-        console.log("searched:", e.target.value);
+        console.log("searched:", searchStr);
     }, 500);
 }
 
-const getInitialRecommendations = ()=>{
-    fetch("/cgi-bin/engine.cgi")
-    .then(res=>res.ok ? res.json() : Promise.reject())
-    .then(res=>{
-        window.recs = res;
-        if(res.length >= 1){
-            res.forEach(r=>allMovies.add(r));
+const getRecommendationsLogic = ()=>{
+    window.dtimer.getRecommendations = null;
+    console.log("getRecommendationsLogic() performing");
+    if(userSelections.size == 0){
+        if(window.irecs){
+            replaceRecommendations(window.irecs);
+        } else {
+            // Initial Recommendations
+            fetch("/cgi-bin/engine.cgi?rf=" + RFQuery([-1]))
+            .then(res=>res.ok ? res.json() : Promise.reject())
+            .then(res=>{
+                window.irecs = res;
+                if(res.length >= 1){
+                    addToLocalCache(res);
+                }
+                replaceRecommendations(res);
+            })
+            .catch(res=>console.log("error: ", res))
         }
-        replaceRecommendations();
-    })
-    .catch(res=>console.log("error: ",res))
+    } else {
+        fetch("/cgi-bin/engine.cgi?rf=" + RFQuery(Array.from(userSelections)))
+        .then(res=>res.ok ? res.json() : Promise.reject())
+        .then(res=>{
+            if(res.length >= 1){
+                addToLocalCache(res);
+            }
+            replaceRecommendations(res);
+        })
+        .catch(res=>console.log("error: ", res))
+    }
+}
+
+const getRecommendations = now=>{
+    console.log("getRecommendations() starting. now? ", !!now);
+    if(window.dtimer.getRecommendations){
+        clearInterval(window.dtimer.getRecommendations);
+        window.dtimer.getRecommendations = null;
+    }
+    if(now){
+        getRecommendationsLogic();
+    } else {
+        window.dtimer.getRecommendations = setTimeout(getRecommendationsLogic, 500);
+    }
 }
 
 const clearSearchBox = ()=>{
@@ -176,12 +227,20 @@ const getMovie = movieId =>{
     return movie;
 }
 
-const addToSelections = movieDiv=>{
+const addToSelections = movieId=>{
+    if(userSelections.has(movieId))
+        return; // Already selected
+
+    let fullMovie = getMovie(movieId);
+    userSelections.add(movieId);
+    let movieDiv = generateMovie(fullMovie.title, fullMovie.poster,
+        fullMovie.rating ? fullMovie.rating : "DUNNO", fullMovie.id, true, false)
     let container = document.querySelector("#selections");
     container.appendChild(movieDiv);
+    getRecommendations();
 }
 
 document.querySelector("#searchBox").addEventListener("input", populateSuggestions);
 
-getInitialRecommendations();
+getRecommendations(true);
 clearSearchBox();
