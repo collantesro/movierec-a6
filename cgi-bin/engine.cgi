@@ -3,11 +3,15 @@
 import cgi, cgitb, os, sys, json, re
 import pandas
 
+# At least with python3 -m http.server --cgi, the CWD of the script is the root path.
+# This statement changes directory to the script's parent directory.
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 form = cgi.FieldStorage()
+if 'DEBUG' in os.environ:
+    print(str(os.environ), file=sys.stderr)
 
-def posterPath(imdbId):
+def posterPath(imdbId: str) -> str:
     imdbId = imdbId.zfill(7)
     f2 = imdbId[:2]
     n2 = imdbId[2:4]
@@ -15,10 +19,46 @@ def posterPath(imdbId):
     path += ".jpg"
     return path
 
+
 imdbLink = lambda imdbId: "https://www.imdb.com/title/tt" + imdbId.zfill(7) + "/" 
 
-# form = cgi.FieldStorage()
-# action = form.getvalue("random")
+
+def similarity(a: set, b: set) -> float:
+    '''Calculates the jaccard similarity of two sets'''
+    # A&B / (|A| + |B| - |A&B|)
+    if isinstance(a, list): a = set(a)
+    if isinstance(b, list): b = set(b)
+
+    if type(a) is not set or type(b) is not set:
+        raise Exception("invalid types")
+
+    c = a & b # (intersection)
+    return len(c) / (len(a) + len(b) - len(c))
+
+
+def genreDictionary(nestedListOfGenres: list) -> dict:
+    output = {'total': 0}
+
+    for movie in nestedListOfGenres:
+        for genre in movie:
+            if genre in output:
+                output[genre] += 1
+            else:
+                output[genre] = 1
+            output['total'] += 1
+    return output
+
+
+def weightedSimilarity(oneMovieGenres: list, genreDict: dict) -> float:
+    '''Calculates the weighted similarity between the genres of one movie and the genreDict'''
+    common = 0
+    for genre in oneMovieGenres:
+        if genre in genreDict:
+            common += genreDict[genre]
+
+    return common / genreDict['total']
+
+
 try:
     movies = pandas.read_pickle("movies.with.ratings.df.gz")
 except:
@@ -35,10 +75,25 @@ if 'rf' in form:
         print("Generating randoms", file=sys.stderr)
         recommendations = movies.sample(10)
     else:
-        #For now, recommend the same items selected
+        # Here's the meat and potatoes.  Use the genres of the selected movies to
+        # find other similar movies.
         print("IDs specified:", form['rf'].value, file=sys.stderr)
-        selections = set(json.loads(form['rf'].value))
-        recommendations = movies.loc[movies.index.isin(selections)]
+        
+        selectedMovies = movies.loc[movies.index.isin(selections)]
+        selectedGenres = selectedMovies['genres']
+        listOfGenres = [ e.split("|") for e in selectedGenres.tolist() ]
+        genreDict = genreDictionary(listOfGenres)
+
+        # Add an extra column for the distance
+        movies['distance'] = movies['genres'].map(lambda g: weightedSimilarity(g.split("|"), genreDict))
+
+        # Sort movies based on the distance value, then by title
+        sortedMovies = movies.sort_values(by=['distance', 'title'], ascending=[False, True])
+
+        # Exclude selected movies:
+        sortedMovies = sortedMovies.loc[~sortedMovies.index.isin(selections)]
+
+        recommendations = sortedMovies.head(10)
 
     output = []
     for index, row in recommendations.iterrows():

@@ -86,7 +86,21 @@ body{
 #searchSuggestions li div{
     width: 110px;
 }
+
 #searchSuggestions {
     flex-flow: row wrap;
     justify-content: space-between;
+}
+
+#caveats{
+    text-align: left;
+    padding: 1em;
+}
+
+#caveats ul{
+    margin: 0;
+}
+
+#caveats p{
+    font-size: small;
 }
