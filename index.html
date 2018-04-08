@@ -20,6 +20,7 @@
                 <li>Nothing</li>
             </ul>
         </div>
+        <h3 id="selectionsHeader" class="hidden">Your selected movies:</h3>
         <div id="selections"></div>
     </div>
 
@@ -33,7 +34,9 @@
         <ul>
             <li>When no movies are selected, 10 random movies are recommended.</li>
             <li>Selected movies do not appear in the recommendations.</li>
-            <li>Recommendations are based on the common genres among the selected movies.</li>
+            <li>Recommendations are based on whichever provides the best distance: genre <em>or</em> words in the title.</li>
+            <li>Title words comparison excludes symbols, numbers, and common words ("the", "and", "a", "aka")</li>
+            <li>Searches prepended with "^" search at the beginning of the titles.</li>
         </ul>
     </div>
 

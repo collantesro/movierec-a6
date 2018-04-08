@@ -4,6 +4,7 @@ var allMovies = new Set();
 var userSelections = new Set();
 
 window.dtimer = {};
+window.outstanding = {};
 
 const RFQuery = movieIdList => encodeURIComponent(JSON.stringify(movieIdList))
 const addToLocalCache = movies=>{
@@ -58,6 +59,10 @@ const removeMovie = movieId => {
             selections.removeChild(children[i]);
         }
     }
+    if(userSelections.size == 0){
+        // When all the selections have been removed, hide the header
+        document.querySelector("#selectionsHeader").classList.add("hidden")
+    }
 }
 
 const replaceRecommendations = recs=>{
@@ -81,7 +86,7 @@ const replaceRecommendations = recs=>{
 // Debouncing: it only runs 500ms after the last time this was called.
 // Repeated calls are ignored.
 //TODO: Separate into different functions
-const  populateSuggestions = (e)=>{
+const populateSuggestions = (e)=>{
     if(window.dtimer.populateSuggestions){
         clearInterval(window.dtimer.populateSuggestions);
         window.dtimer.populateSuggestions = null;
@@ -99,11 +104,15 @@ const  populateSuggestions = (e)=>{
         if(searchStr !== ""){
             let url = "cgi-bin/engine.cgi?search=" + encodeURIComponent(searchStr);
 
-            if(window.outstanding){
+            // The whole window.outstanding thing is to cancel any outstanding requests if a subsequent one is made
+            // Chrome doesn't support AbortControllers and signals in fetch, so instead generate a
+            // random number.  If that random number doesn't match when the request runs, don't do anything
+
+            if(window.outstanding.populateSuggestions){
                 if(typeof AbortController != "undefined"){
-                    window.outstanding.controller.abort();
+                    window.outstanding.populateSuggestions.controller.abort();
                 }
-                window.outstanding = null;
+                window.outstanding.populateSuggestions = null;
             }
 
             let newController = Math.random();
@@ -111,13 +120,13 @@ const  populateSuggestions = (e)=>{
                 newController = new AbortController();
             }
             
-            window.outstanding = {controller: newController};
+            window.outstanding.populateSuggestions = {controller: newController};
             fetch(url, {
                 method: "GET",
                 signal: newController.signal
             }).then(res=>{
                 if(typeof AbortController == "undefined"){
-                    if(window.outstanding.controller != newController){
+                    if(window.outstanding.populateSuggestions.controller != newController){
                         console.log("This request doesn't match the outstanding request.");
                         Promise.reject();
                     }
@@ -163,6 +172,13 @@ const  populateSuggestions = (e)=>{
 const getRecommendationsLogic = ()=>{
     window.dtimer.getRecommendations = null;
     console.log("getRecommendationsLogic() performing");
+    if(window.outstanding.getRecommendations){
+        if(typeof AbortController != "undefined"){
+            window.outstanding.getRecommendations.controller.abort();
+        }
+        window.outstanding.getRecommendations = null;
+    }
+
     if(userSelections.size == 0){
         if(window.irecs){
             replaceRecommendations(window.irecs);
@@ -180,8 +196,28 @@ const getRecommendationsLogic = ()=>{
             .catch(res=>console.log("error: ", res))
         }
     } else {
-        fetch("cgi-bin/engine.cgi?rf=" + RFQuery(Array.from(userSelections)))
-        .then(res=>res.ok ? res.json() : Promise.reject())
+        // Trying to avoid a race condition when multiple movies are removed at once,
+        // selection is then 0, but one of the intermittent calculations overrides this.
+        let newController = Math.random();
+        if(typeof AbortController != "undefined"){
+            newController = new AbortController();
+        }
+        
+        window.outstanding.getRecommendations = {controller: newController};
+        
+        fetch("cgi-bin/engine.cgi?rf=" + RFQuery(Array.from(userSelections)), {
+            method: "GET",
+            signal: newController.signal
+        })
+        .then(res=>{
+            if(typeof AbortController == "undefined"){
+                if(window.outstanding.getRecommendations.controller != newController){
+                    console.log("This request doesn't match the outstanding request.");
+                    Promise.reject();
+                }
+            }
+            return res.ok ? res.json() : Promise.reject()
+        })
         .then(res=>{
             if(res.length >= 1){
                 addToLocalCache(res);
@@ -230,11 +266,13 @@ const getMovie = movieId =>{
 const addToSelections = movieId=>{
     if(userSelections.has(movieId))
         return; // Already selected
+    // Show the selections header
+    document.querySelector("#selectionsHeader").classList.remove("hidden")
 
     let fullMovie = getMovie(movieId);
     userSelections.add(movieId);
     let movieDiv = generateMovie(fullMovie.title, fullMovie.poster,
-        fullMovie.rating ? fullMovie.rating : "DUNNO", fullMovie.id, true, false)
+        fullMovie.rating ? fullMovie.rating : "DUNNO", fullMovie.id, true, fullMovie.link)
     let container = document.querySelector("#selections");
     container.appendChild(movieDiv);
     getRecommendations();

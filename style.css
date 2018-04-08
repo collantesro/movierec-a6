@@ -104,3 +104,7 @@ body{
 #caveats p{
     font-size: small;
 }
+
+.hidden{
+    display: none;
+}
