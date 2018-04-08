@@ -102,11 +102,11 @@ if 'rf' in form:
         movies['distanceGenre'] = movies['genres'].map(lambda g: weightedSimilarity(g.split("|"), genreDict))
         movies['distanceTitle'] = movies['title'].map(lambda t: weightedSimilarity(decomposeTitle(t), titleDict))
 
-        # For each row, set bestDistance to the larger of distanceGenre and distanceTitle
-        movies['bestDistance'] = movies[['distanceGenre', 'distanceTitle']].max(axis=1)
+        ## For each row, set bestDistance to the larger of distanceGenre and distanceTitle
+        #movies['bestDistance'] = movies[['distanceGenre', 'distanceTitle']].max(axis=1)
 
-        # Sort movies based on the distance value, then by title
-        sortedMovies = movies.sort_values(by=['bestDistance', 'title'], ascending=[False, True])
+        # Sort movies based on genre, then by title similarity, then finally by title
+        sortedMovies = movies.sort_values(by=['distanceGenre', 'distanceTitle', 'title'], ascending=[False, False, True])
 
         # Exclude selected movies from the recommendations:
         sortedMovies = sortedMovies.loc[~sortedMovies.index.isin(selections)]
@@ -126,13 +126,15 @@ if 'rf' in form:
     movieList.sort(key=lambda m: m['title'])
     print(json.dumps(movieList))
 elif 'search' in form and type(form['search'].value) is str:
-    searchStr = form['search'].value
+    searchStr = form['search'].value.strip()
     print("Searching for [", searchStr ,']', file=sys.stderr)
     if len(searchStr) >= 2 and searchStr.startswith("^"):
         # If a search string starts with "^", search at the beginning of the title
-        matching = movies.loc[movies['title'].str.contains("^" + re.escape(searchStr[1:]), case=False)]
-    else:
+        matching = movies.loc[movies['title'].str.contains("^" + re.escape(searchStr[1:].strip()), case=False)]
+    elif len(searchStr) > 0:
         matching = movies.loc[movies['title'].str.contains(searchStr, case=False, regex=False)]
+    else: # Empty string gets empty response
+        print('[]')
         
     movieList = []
     for index, row in matching.sort_values(by=['title', 'imdbId']).head(10).iterrows():

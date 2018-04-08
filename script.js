@@ -1,16 +1,25 @@
 "use strict";
 
+// Local cache of movies returned by recommendations or by suggestions
 var allMovies = new Set();
+
+// A set of the user's selected movie's movieIds
 var userSelections = new Set();
 
 window.dtimer = {};
 window.outstanding = {};
 
+// Converts the array of movies to a URI encoded json string.
 const RFQuery = movieIdList => encodeURIComponent(JSON.stringify(movieIdList))
+
+// Adds any returned movies to the local cache.
 const addToLocalCache = movies=>{
     movies.forEach(m=>allMovies.add(m));
 }
 
+// Returns a div containing a movie poster, title, and rating.
+// If removeLink is true, a link is made to remove the movie (for selections)
+// If posterClickURL is specified, the poster is wrapped in an <a> with the href set to it.
 const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClickURL) =>{
     let posterDiv = document.createElement("div");
     posterDiv.classList.add("movie");
@@ -35,6 +44,7 @@ const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClic
     // Rating
     posterDiv.appendChild(document.createTextNode("Rating: " + rating));
 
+    // This is used for movies in selections to remove them from consideration.
     if(removeLink === true){
         let link = document.createElement("a");
         link.href = "#";
@@ -48,6 +58,7 @@ const generateMovie = (title, posterURL, rating, movieId, removeLink, posterClic
 
 }
 
+// This event handler removes a movie from the selections
 const removeMovie = movieId => {
     console.log("removeMove(" + movieId + ")");
     userSelections.delete(movieId);
@@ -65,6 +76,7 @@ const removeMovie = movieId => {
     }
 }
 
+// This function accepts an array of movie objects and replaces all the current recommendations
 const replaceRecommendations = recs=>{
     let header = document.querySelector("#recommendations > h3");
     let div = document.querySelector("#recommendations > .manyMovies");
@@ -85,6 +97,7 @@ const replaceRecommendations = recs=>{
 
 // Debouncing: it only runs 500ms after the last time this was called.
 // Repeated calls are ignored.
+// This function searches for the title of a movie, and shows the suggestions returned by the server-side script
 //TODO: Separate into different functions
 const populateSuggestions = (e)=>{
     if(window.dtimer.populateSuggestions){
@@ -101,12 +114,12 @@ const populateSuggestions = (e)=>{
     window.dtimer.populateSuggestions = setTimeout(()=>{
         window.dtimer.populateSuggestions = null;
         // Get search suggestions here
-        if(searchStr !== ""){
+        if(searchStr !== "" && searchStr !== "^"){ // Not empty, and not merely a caret symbol.
             let url = "cgi-bin/engine.cgi?search=" + encodeURIComponent(searchStr);
 
-            // The whole window.outstanding thing is to cancel any outstanding requests if a subsequent one is made
+            // The whole window.outstanding thing is to cancel any outstanding requests if a subsequent one is made.
             // Chrome doesn't support AbortControllers and signals in fetch, so instead generate a
-            // random number.  If that random number doesn't match when the request runs, don't do anything
+            // random number.  If that random number doesn't match when the promise fulfills, don't do anything
 
             if(window.outstanding.populateSuggestions){
                 if(typeof AbortController != "undefined"){
@@ -169,6 +182,7 @@ const populateSuggestions = (e)=>{
     }, 500);
 }
 
+// This is the body of getRecommendations().  Otherwise, there would be two places where this would be copy/pasted
 const getRecommendationsLogic = ()=>{
     window.dtimer.getRecommendations = null;
     console.log("getRecommendationsLogic() performing");
@@ -228,6 +242,7 @@ const getRecommendationsLogic = ()=>{
     }
 }
 
+// Get movie recommendations based on the selections.
 const getRecommendations = now=>{
     console.log("getRecommendations() starting. now? ", !!now);
     if(window.dtimer.getRecommendations){
@@ -241,6 +256,7 @@ const getRecommendations = now=>{
     }
 }
 
+// Clicking on a movie or clicking on the clear button hides the suggestions div.
 const clearSearchBox = ()=>{
     let box = document.querySelector("#searchBox");
     box.value = "";
@@ -253,6 +269,7 @@ const clearSearchBox = ()=>{
     return false;
 }
 
+// Searches the allMovies cache for the movie with the specified movieId
 const getMovie = movieId =>{
     let movie = {};
     allMovies.forEach(m=>{
@@ -263,6 +280,7 @@ const getMovie = movieId =>{
     return movie;
 }
 
+// Used when a movie is clicked in the suggestions div
 const addToSelections = movieId=>{
     if(userSelections.has(movieId))
         return; // Already selected
@@ -280,5 +298,8 @@ const addToSelections = movieId=>{
 
 document.querySelector("#searchBox").addEventListener("input", populateSuggestions);
 
+// Get initial (10 random) recommendations
 getRecommendations(true);
+
+// Clear and focus on the searchbox
 clearSearchBox();
