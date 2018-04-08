@@ -97,7 +97,7 @@ const  populateSuggestions = (e)=>{
         window.dtimer.populateSuggestions = null;
         // Get search suggestions here
         if(searchStr !== ""){
-            let url = "/cgi-bin/engine.cgi?search=" + encodeURIComponent(searchStr);
+            let url = "cgi-bin/engine.cgi?search=" + encodeURIComponent(searchStr);
 
             if(window.outstanding){
                 if(typeof AbortController != "undefined"){
@@ -168,7 +168,7 @@ const getRecommendationsLogic = ()=>{
             replaceRecommendations(window.irecs);
         } else {
             // Initial Recommendations
-            fetch("/cgi-bin/engine.cgi?rf=" + RFQuery([-1]))
+            fetch("cgi-bin/engine.cgi?rf=" + RFQuery([-1]))
             .then(res=>res.ok ? res.json() : Promise.reject())
             .then(res=>{
                 window.irecs = res;
@@ -180,7 +180,7 @@ const getRecommendationsLogic = ()=>{
             .catch(res=>console.log("error: ", res))
         }
     } else {
-        fetch("/cgi-bin/engine.cgi?rf=" + RFQuery(Array.from(userSelections)))
+        fetch("cgi-bin/engine.cgi?rf=" + RFQuery(Array.from(userSelections)))
         .then(res=>res.ok ? res.json() : Promise.reject())
         .then(res=>{
             if(res.length >= 1){
