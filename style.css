@@ -1,18 +1,33 @@
 * {
     box-sizing: border-box;
-    font-family: "Open Sans", sans;
+    font-family: "Open Sans", sans-serif;
 }
 
 body{
-    background-color: green;
     color: white;
+}
+
+/* The body grows to fit everything, but that affects the appearance of a background gradient, if applied there. */
+/* This element and the following rule is to have the gradient separate from the body */
+#gradientContainer{ 
+    margin: 0;
+    padding: 0;
+    border: 0;
+    position: fixed;
+    height: 100vh;
+    width: 100vw;
+    background: green;
+    background: linear-gradient(rgb(0, 180, 0), rgb(0, 60, 0));
+    z-index: -1;
+    top: 0;
+    left: 0;
 }
 
 .center{
     margin: 0 auto;
     background-color: white;
-    color: black;
-    border-radius: 10px;
+    color: #222;
+    border-radius: 5px;
     box-shadow: 0 10px 25px #333;
     max-width: 600px;
     padding: 10px;
@@ -30,7 +45,7 @@ body{
 }
 
 #clearButton{
-    margin: 0 auto;
+    /* margin: 0 auto; */
     display: inline;
     position: absolute;
 }
@@ -71,14 +86,15 @@ body{
     border: 1px solid black;
     display: block;
     margin: 0 auto;
+    border-radius: 5px;
 }
-
 
 #recommendations > .manyMovies{
     display: flex;
     overflow: scroll;
     font-size: small;
 }
+
 #searchSuggestions li {
     display: inline-block;
 }

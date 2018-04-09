@@ -1,5 +1,7 @@
 "use strict";
 
+console.log("By Rolando Collantes");
+
 // Local cache of movies returned by recommendations or by suggestions
 var allMovies = new Set();
 

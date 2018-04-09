@@ -102,11 +102,12 @@ if 'rf' in form:
         movies['distanceGenre'] = movies['genres'].map(lambda g: weightedSimilarity(g.split("|"), genreDict))
         movies['distanceTitle'] = movies['title'].map(lambda t: weightedSimilarity(decomposeTitle(t), titleDict))
 
-        ## For each row, set bestDistance to the larger of distanceGenre and distanceTitle
-        #movies['bestDistance'] = movies[['distanceGenre', 'distanceTitle']].max(axis=1)
+        # For each row, set bestDistance to the larger of distanceGenre and distanceTitle
+        movies['bestDistance'] = movies[['distanceGenre', 'distanceTitle']].max(axis=1)
 
         # Sort movies based on genre, then by title similarity, then finally by title
-        sortedMovies = movies.sort_values(by=['distanceGenre', 'distanceTitle', 'title'], ascending=[False, False, True])
+        # sortedMovies = movies.sort_values(by=['distanceGenre', 'distanceTitle', 'title'], ascending=[False, False, True])
+        sortedMovies = movies.sort_values(by=['bestDistance', 'title'], ascending=[False, True])
 
         # Exclude selected movies from the recommendations:
         sortedMovies = sortedMovies.loc[~sortedMovies.index.isin(selections)]
@@ -120,7 +121,7 @@ if 'rf' in form:
             'title': row['title'],
             'poster': posterPath(str(row['imdbId'])),
             'link': imdbLink(str(row['imdbId'])),
-            'rating': str(row['rating']) + "/10"
+            'rating': row['rating'] + "/10"
             }
         movieList.append(m)
     movieList.sort(key=lambda m: m['title'])
@@ -143,7 +144,7 @@ elif 'search' in form and type(form['search'].value) is str:
             'title': row['title'],
             'poster': posterPath(str(row['imdbId'])),
             'link': imdbLink(str(row['imdbId'])),
-            'rating': str(row['rating']) + "/10"
+            'rating': row['rating'] + "/10"
             }
         movieList.append(m)
     movieList.sort(key=lambda m: m['title'])
