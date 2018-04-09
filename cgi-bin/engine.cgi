@@ -11,6 +11,7 @@ form = cgi.FieldStorage()
 if 'DEBUG' in os.environ:
     print(str(os.environ), file=sys.stderr)
 
+
 def posterPath(imdbId: str) -> str:
     imdbId = imdbId.zfill(7)
     f2 = imdbId[:2]
@@ -20,20 +21,17 @@ def posterPath(imdbId: str) -> str:
     return path
 
 
-imdbLink = lambda imdbId: "https://www.imdb.com/title/tt" + imdbId.zfill(7) + "/" 
+def imdbLink(imdbId):
+    return "https://www.imdb.com/title/tt" + imdbId.zfill(7) + "/"
 
 
-# def similarity(a: set, b: set) -> float:
-#     '''Calculates the jaccard similarity of two sets'''
-#     # A&B / (|A| + |B| - |A&B|)
-#     if isinstance(a, list): a = set(a)
-#     if isinstance(b, list): b = set(b)
-#
-#     if type(a) is not set or type(b) is not set:
-#         raise Exception("invalid types")
-#
-#     c = a & b # (intersection)
-#     return len(c) / (len(a) + len(b) - len(c))
+def formatRating(rating) -> str:
+    if isinstance(rating, float): rating = str(rating)
+    elif isinstance(rating, int): rating = str(rating)
+    if type(rating) is str:
+        if rating != '??':
+            return rating + "/10"
+    return "??"
 
 
 def occurrenceDict(nested: list) -> dict:
@@ -58,6 +56,7 @@ def weightedSimilarity(oneMoviesProperties: list, occurrenceDict: dict) -> float
             common += occurrenceDict[i]
 
     return common / occurrenceDict['_total']
+
 
 def decomposeTitle(title: str) -> set:
     '''Returns a set of lowercase words in the given string without symbols, numbers, and some common words.'''
@@ -100,13 +99,13 @@ if 'rf' in form:
 
         # Add an extra column for the distance
         movies['distanceGenre'] = movies['genres'].map(lambda g: weightedSimilarity(g.split("|"), genreDict))
-        movies['distanceTitle'] = movies['title'].map(lambda t: weightedSimilarity(decomposeTitle(t), titleDict))
+        # Boost the weight of title a little
+        movies['distanceTitle'] = movies['title'].map(lambda t: weightedSimilarity(decomposeTitle(t), titleDict) + 0.2)
 
         # For each row, set bestDistance to the larger of distanceGenre and distanceTitle
         movies['bestDistance'] = movies[['distanceGenre', 'distanceTitle']].max(axis=1)
 
         # Sort movies based on genre, then by title similarity, then finally by title
-        # sortedMovies = movies.sort_values(by=['distanceGenre', 'distanceTitle', 'title'], ascending=[False, False, True])
         sortedMovies = movies.sort_values(by=['bestDistance', 'title'], ascending=[False, True])
 
         # Exclude selected movies from the recommendations:
@@ -121,7 +120,7 @@ if 'rf' in form:
             'title': row['title'],
             'poster': posterPath(str(row['imdbId'])),
             'link': imdbLink(str(row['imdbId'])),
-            'rating': row['rating'] + "/10"
+            'rating': formatRating(row['rating'])
             }
         movieList.append(m)
     movieList.sort(key=lambda m: m['title'])
@@ -144,7 +143,7 @@ elif 'search' in form and type(form['search'].value) is str:
             'title': row['title'],
             'poster': posterPath(str(row['imdbId'])),
             'link': imdbLink(str(row['imdbId'])),
-            'rating': row['rating'] + "/10"
+            'rating': formatRating(row['rating'])
             }
         movieList.append(m)
     movieList.sort(key=lambda m: m['title'])
